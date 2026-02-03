@@ -1,12 +1,14 @@
 require('dotenv').config();
 const express = require('express');
-const app = express();
+
 const connectDB = require('./config/db');
 const user = require('./routes/auth');
 const todo = require('./routes/todo');
-const cors = require('cors');
+const cors = require('cors')
 
-// Global DB connection for serverless (avoids reconnecting per request)
+const app = express();
+
+// Global DB connection cache (for serverless)
 let cachedDb = null;
 const connectToDatabase = async () => {
   if (cachedDb) return cachedDb;
@@ -15,32 +17,38 @@ const connectToDatabase = async () => {
   return cachedDb;
 };
 
-// Middleware
-app.use(cors());
-app.use(express.json({ extended: false }));
+
+app.use(express.json());
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "x-auth-token", "Authorization"]
+}));
 
 // Routes
 app.use('/api/v1/user', user);
 app.use('/api/v1/todo', todo);
 
 // 404 handler
-app.use((req, res) => res.status(404).send({ message: `API route not found`, route: `${req.hostname}${req.url}` }));
+app.use((req, res) =>
+  res.status(404).send({ message: 'API route not found', route: `${req.hostname}${req.url}` })
+);
 
-// Export for Vercel (serverless)
+// Serverless export (Vercel)
 module.exports = async (req, res) => {
-  await connectToDatabase(); // Ensure DB is connected
-  return app(req, res); // Pass request to Express
+  await connectToDatabase();
+  return app(req, res);
 };
 
-// For local testing (remove if deploying only to Vercel)
+// Local server (for testing)
 if (require.main === module) {
   const startServer = async () => {
     try {
       await connectToDatabase();
-      const PORT = process.env.PORT || 5000;
+      const PORT = process.env.PORT||5000
       app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
     } catch (err) {
-      console.error('Failed to start:', err.message);
+      console.error('Failed to start server:', err.message);
     }
   };
   startServer();

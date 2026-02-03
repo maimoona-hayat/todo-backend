@@ -3,6 +3,8 @@ const User = require('../model/authModel');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
+// -------------------- Schemas --------------------
+
 // Register schema
 const registerSchema = Joi.object({
   username: Joi.string().min(3).max(30).required(),
@@ -16,43 +18,74 @@ const loginSchema = Joi.object({
   password: Joi.string().required()
 });
 
-// Register
+// -------------------- Register --------------------
 exports.register = async (req, res) => {
   try {
+    // Validation
     const { error } = registerSchema.validate(req.body);
-    if (error) return res.status(400).json({ isSuccess: false, message: error.details[0].message });
+    if (error) 
+      return res.status(400).json({ isSuccess: false, message: error.details[0].message });
 
     const { username, email, password } = req.body;
+
+    // Check existing user
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
     if (existingUser)
       return res.status(400).json({ isSuccess: false, message: 'Email or username already exists' });
 
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Save user
     const user = new User({ username, email, password: hashedPassword });
     await user.save();
 
-    res.status(201).json({ isSuccess: true, message: 'User registered successfully' });
+    // Exclude password from response
+    const { password: pwd, ...userData } = user._doc;
+
+    res.status(201).json({
+      isSuccess: true,
+      message: 'User registered successfully',
+      data: userData
+    });
+
   } catch (err) {
     res.status(500).json({ isSuccess: false, message: 'Internal server error' });
   }
 };
 
-// Login
+// -------------------- Login --------------------
 exports.login = async (req, res) => {
   try {
+    // Validation
     const { error } = loginSchema.validate(req.body);
-    if (error) return res.status(400).json({ isSuccess: false, message: error.details[0].message });
+    if (error) 
+      return res.status(400).json({ isSuccess: false, message: error.details[0].message });
 
     const { email, password } = req.body;
+
+    // Find user
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ isSuccess: false, message: 'Invalid credentials' });
+    if (!user) 
+      return res.status(400).json({ isSuccess: false, message: 'Invalid credentials' });
 
+    // Compare password
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ isSuccess: false, message: 'Invalid credentials' });
+    if (!isMatch) 
+      return res.status(400).json({ isSuccess: false, message: 'Invalid credentials' });
 
+    // Generate JWT
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-    res.json({ isSuccess: true, message: 'Login successful', data: { token, user: { id: user._id, username: user.username, email: user.email } } });
+    // Exclude password
+    const { password: pwd, ...userData } = user._doc;
+
+    res.json({
+      isSuccess: true,
+      message: 'Login successful',
+      data: { token, user: userData }
+    });
+
   } catch (err) {
     res.status(500).json({ isSuccess: false, message: 'Internal server error' });
   }

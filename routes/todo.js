@@ -9,7 +9,7 @@ const {
   deleteTodo
 } = require('../controllers/todoController');
 
-router.use(authMiddleware); // Protect all routes
+router.use(authMiddleware); 
 
 router.post('/', createTodo);
 router.get('/', getTodos);
