@@ -11,19 +11,23 @@ const todoSchema = Joi.object({
 });
 
 // Create Todo
+// Create Todo
 exports.createTodo = async (req, res) => {
   try {
-    const { error } = todoSchema.validate(req.body);
+    // ✅ Remove createdBy from req.body before validation
+    const { createdBy, ...validData } = req.body;
+    
+    const { error } = todoSchema.validate(validData);
     if (error) return res.status(400).json({ isSuccess: false, message: error.details[0].message });
 
-    const { title, description, category, dueDate } = req.body;
+    const { title, description, category, dueDate } = validData;
 
     const todo = new Todo({
       title,
       description,
       category,
       dueDate,
-      createdBy: req.user.id
+      createdBy: req.user.id  // Set by server from token
     });
 
     await todo.save();
@@ -35,13 +39,32 @@ exports.createTodo = async (req, res) => {
   }
 };
 
-// Get Todos
+// Get Todos (with pagination)
 exports.getTodos = async (req, res) => {
   try {
-    const todos = await Todo.find({ createdBy: req.user.id })
-      .sort({ createdAt: -1 });
+    // Get page from query params, default to 1
+    const page = parseInt(req.query.page) || 1;
+    const limit = 6; // 6 todos per page
+    const skip = (page - 1) * limit;
 
-    res.json({ isSuccess: true, data: { todos, total: todos.length } });
+    // Get total count
+    const total = await Todo.countDocuments({ createdBy: req.user.id });
+
+    // Get paginated todos
+    const todos = await Todo.find({ createdBy: req.user.id })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.json({ 
+      isSuccess: true, 
+      data: { 
+        todos, 
+        total,
+        page,
+        totalPages: Math.ceil(total / limit)
+      } 
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ isSuccess: false, message: 'Internal server error' });
