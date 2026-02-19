@@ -2,9 +2,9 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 
-const connectDB = require('../config/db');
-const user = require('../routes/auth');
-const todo = require('../routes/todo');
+const connectDB = require('./config/db');
+const user = require('./routes/auth');
+const todo = require('./routes/todo');
 
 const app = express();
 
@@ -26,5 +26,9 @@ app.use((req, res) => {
   });
 });
 
-// Export for Vercel
-module.exports = app;
+// Start Server
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

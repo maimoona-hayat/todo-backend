@@ -1,4 +1,4 @@
-const Todo = require('../model/todoModel');
+const Todo = require('../model/Todo');
 const Joi = require('joi');
 
 // Todo validation schema
@@ -16,19 +16,14 @@ exports.createTodo = async (req, res) => {
     const { error } = todoSchema.validate(req.body);
     if (error) return res.status(400).json({ isSuccess: false, message: error.details[0].message });
 
-    let { title, description, category, dueDate } = req.body;
-
-    // agar dueDate purani ho, delete (ignore) kar do
-    if (dueDate && new Date(dueDate) < new Date()) {
-      dueDate = undefined; // ya null bhi kar sakte ho
-    } 
+    const { title, description, category, dueDate } = req.body;
 
     const todo = new Todo({
       title,
       description,
       category,
       dueDate,
-      createdBy: req.user.id // agar auth middleware use ho raha ho
+      createdBy: req.user.id
     });
 
     await todo.save();
@@ -46,16 +41,7 @@ exports.getTodos = async (req, res) => {
     const todos = await Todo.find({ createdBy: req.user.id })
       .sort({ createdAt: -1 });
 
-    // agar dueDate purani ho aur complete false → mark expired
-    const updatedTodos = todos.map(todo => {
-      if (todo.dueDate && new Date(todo.dueDate) < new Date() && !todo.isCompleted) {
-        return { ...todo._doc, status: 'Expired' };
-      } else {
-        return todo;
-      }
-    });
-
-    res.json({ isSuccess: true, data: { todos: updatedTodos, total: todos.length } });
+    res.json({ isSuccess: true, data: { todos, total: todos.length } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ isSuccess: false, message: 'Internal server error' });
@@ -77,10 +63,8 @@ exports.getTodoById = async (req, res) => {
 // Update Todo
 exports.updateTodo = async (req, res) => {
   try {
-    // Remove _id from req.body agar exist karta ho
     const { _id, ...updateData } = req.body;
 
-    // Validate fields (Joi se ya manually)
     const { error } = todoSchema.validate(updateData);
     if (error) return res.status(400).json({ isSuccess: false, message: error.details[0].message });
 
