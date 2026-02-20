@@ -5,14 +5,12 @@ const jwt = require('jsonwebtoken');
 
 // -------------------- Schemas --------------------
 
-// Register schema
 const registerSchema = Joi.object({
   username: Joi.string().min(3).max(30).required(),
   email: Joi.string().email().required(),
   password: Joi.string().min(6).required()
 });
 
-// Login schema
 const loginSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().required()
@@ -21,7 +19,6 @@ const loginSchema = Joi.object({
 // -------------------- Register --------------------
 exports.register = async (req, res) => {
   try {
-    // Validation
     const { error } = registerSchema.validate(req.body);
     if (error) 
       return res.status(400).json({ isSuccess: false, message: error.details[0].message });
@@ -36,11 +33,18 @@ exports.register = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Get profile image URL from Cloudinary (if uploaded)
+    const profileImage = req.file ? req.file.path : '';
+
     // Save user
-    const user = new User({ username, email, password: hashedPassword });
+    const user = new User({ 
+      username, 
+      email, 
+      password: hashedPassword,
+      profileImage 
+    });
     await user.save();
 
-    // Exclude password from response
     const { password: pwd, ...userData } = user._doc;
 
     res.status(201).json({
@@ -50,6 +54,7 @@ exports.register = async (req, res) => {
     });
 
   } catch (err) {
+    console.error(err);
     res.status(500).json({ isSuccess: false, message: 'Internal server error' });
   }
 };
@@ -57,27 +62,22 @@ exports.register = async (req, res) => {
 // -------------------- Login --------------------
 exports.login = async (req, res) => {
   try {
-    // Validation
     const { error } = loginSchema.validate(req.body);
     if (error) 
       return res.status(400).json({ isSuccess: false, message: error.details[0].message });
 
     const { email, password } = req.body;
 
-    // Find user
     const user = await User.findOne({ email });
     if (!user) 
       return res.status(400).json({ isSuccess: false, message: 'Invalid credentials' });
 
-    // Compare password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) 
       return res.status(400).json({ isSuccess: false, message: 'Invalid credentials' });
 
-    // Generate JWT
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-    // Exclude password
     const { password: pwd, ...userData } = user._doc;
 
     res.json({
@@ -87,6 +87,7 @@ exports.login = async (req, res) => {
     });
 
   } catch (err) {
+    console.error(err);
     res.status(500).json({ isSuccess: false, message: 'Internal server error' });
   }
 };

@@ -11,7 +11,6 @@ const todoSchema = Joi.object({
 });
 
 // Create Todo
-// Create Todo
 exports.createTodo = async (req, res) => {
   try {
     // ✅ Remove createdBy from req.body before validation
@@ -44,7 +43,7 @@ exports.getTodos = async (req, res) => {
   try {
     // Get page from query params, default to 1
     const page = parseInt(req.query.page) || 1;
-    const limit = 6; // 6 todos per page
+    const limit = 6; 
     const skip = (page - 1) * limit;
 
     // Get total count
