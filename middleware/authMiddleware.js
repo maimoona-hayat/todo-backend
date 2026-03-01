@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 
 const authMiddleware = (req, res, next) => {
   const authHeader = req.header('x-auth-token');
-  console.log("Backend received token:", authHeader); // Debug log
+  console.log("Backend received token:", authHeader); 
   
   if (!authHeader) {
     return res.status(401).json({ message: 'No token, auth denied' });
