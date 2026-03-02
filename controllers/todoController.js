@@ -49,31 +49,40 @@ exports.createTodo = async (req, res) => {
 exports.getTodos = async (req, res) => {
   try {
     const userId = req.user.id;
-    const cacheKey = `todos:${userId}:all`; // key for all todos
+    const page = parseInt(req.query.page) || 1;
+    const limit = 6;
+    const skip = (page - 1) * limit;
+    const cacheKey = `todos:${userId}:page:${page}`;
 
-    //  Check Redis cache
     const cached = await redisClient.get(cacheKey);
     if (cached) {
       return res.json({
         isSuccess: true,
         data: JSON.parse(cached),
-        source: "cache", // indicates data came from Redis
+        source: "cache",
       });
     }
 
-    //  Fetch from MongoDB
-    const todos = await Todo.find({ createdBy: userId }).sort({
-      createdAt: -1,
-    });
+    const todos = await Todo.find({ createdBy: userId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
-    //  Save to Redis (expire in 60 sec)
-    await redisClient.setEx(cacheKey, 60, JSON.stringify(todos));
+    const total = await Todo.countDocuments({ createdBy: userId });
 
-    //  Send response
+    const responseData = {
+      todos,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
+
+    await redisClient.setEx(cacheKey, 60, JSON.stringify(responseData));
+
     res.json({
       isSuccess: true,
-      data: todos,
-      source: "db", // indicates data came from MongoDB
+      data: responseData,
+      source: "db",
     });
   } catch (err) {
     console.error(err);
