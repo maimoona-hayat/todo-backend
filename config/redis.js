@@ -1,6 +1,6 @@
 const redis = require("redis");
 
-const REDIS_URL = `redis://default:${process.env.REDIS_PASSWORD}@${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`;
+const REDIS_URL = `${process.env.REDIS_URL}`;
 
 const client = redis.createClient({ url: REDIS_URL });
 
