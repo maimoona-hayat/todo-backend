@@ -17,7 +17,7 @@ app.use(cors());
 
 // Routes
 app.use('/api/v1/user', user);
-app.use('/api/v1/todo', todo);
+app.use('/api/v1/todos', todo);
 
 // 404 Route
 app.use((req, res) => {
