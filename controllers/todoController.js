@@ -2,7 +2,6 @@ const Todo = require("../model/Todo");
 const Joi = require("joi");
 const redisClient = require("../config/redis");
 
-// Todo validation schema
 const todoSchema = Joi.object({
   title: Joi.string().min(3).required(),
   description: Joi.string().allow(""),
@@ -33,6 +32,7 @@ exports.createTodo = async (req, res) => {
     });
 
     await todo.save();
+    await redisClient.del(`todos:${req.user.id}:page:1`);  // ✅ After save
 
     res
       .status(201)
@@ -91,6 +91,7 @@ exports.getTodos = async (req, res) => {
       .json({ isSuccess: false, message: "Internal server error" });
   }
 };
+
 // Get Todo by ID
 exports.getTodoById = async (req, res) => {
   try {
@@ -127,6 +128,8 @@ exports.updateTodo = async (req, res) => {
         .status(404)
         .json({ isSuccess: false, message: "Todo not found" });
 
+    await redisClient.del(`todos:${req.user.id}:page:1`);  // ✅ AFTER update, BEFORE response
+
     res.json({ isSuccess: true, message: "Todo updated", data: todo });
   } catch (err) {
     console.error(err);
@@ -144,6 +147,9 @@ exports.deleteTodo = async (req, res) => {
       return res
         .status(404)
         .json({ isSuccess: false, message: "Todo not found" });
+
+    await redisClient.del(`todos:${req.user.id}:page:1`);  // ✅ AFTER delete, BEFORE response
+
     res.json({ isSuccess: true, message: "Todo deleted" });
   } catch (err) {
     console.error(err);
